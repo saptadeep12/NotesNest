@@ -40,6 +40,12 @@ Faculty data lives in `backend/data/faculty.json`. Copy
 `python -m app.manage sync` or `python -m app.manage sync-faculty`. The real
 faculty JSON and storage PDFs are gitignored on purpose.
 
+Advice articles live as one Markdown file per article in `backend/data/advice/`.
+Each file starts with `title`, `category`, and `summary` frontmatter, with
+optional `author` and integer `order` fields. The filename must be a lowercase
+kebab-case slug. Re-run `python -m app.manage sync` or
+`python -m app.manage sync-advice` after adding, editing, or removing articles.
+
 ## Tests and linting
 ```bash
 cd backend && ruff check . && pytest

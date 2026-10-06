@@ -2,6 +2,7 @@
 
 import argparse
 import re
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
@@ -10,7 +11,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
-from app.models import Faculty, Resource, Subject, Term
+from app.models import Article, Faculty, Resource, Subject, Term
 from app.models.enums import ResourceType
 from app.services.storage import storage_root
 
@@ -47,6 +48,50 @@ class FacultyEntry(BaseModel):
 
 class FacultyData(BaseModel):
     faculty: list[FacultyEntry]
+
+
+class ArticleFrontmatter(BaseModel):
+    title: str
+    category: str
+    summary: str
+    author: str | None = None
+    order: int = 100
+
+    @field_validator("title", "category", "summary", "author", mode="before")
+    @classmethod
+    def article_blank_strings_are_missing(cls, value: object) -> object:
+        return None if isinstance(value, str) and not value.strip() else value
+
+
+def parse_article_file(path: Path) -> tuple[str, ArticleFrontmatter, str, datetime]:
+    slug = path.stem
+    if re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", slug) is None:
+        raise ValueError(f"{path.name}: slug must be lowercase kebab-case")
+    lines = path.read_text(encoding="utf-8").splitlines()
+    if not lines or lines[0].strip() != "---":
+        raise ValueError(f"{path.name}: missing frontmatter opening fence")
+    try:
+        closing = lines.index("---", 1)
+    except ValueError as exc:
+        raise ValueError(f"{path.name}: missing frontmatter closing fence") from exc
+    values: dict[str, str] = {}
+    for line_number, line in enumerate(lines[1:closing], start=2):
+        if not line.strip() or ":" not in line:
+            raise ValueError(f"{path.name}: invalid frontmatter on line {line_number}")
+        key, value = line.split(":", 1)
+        key, value = key.strip(), value.strip()
+        if not key:
+            raise ValueError(f"{path.name}: frontmatter key is empty on line {line_number}")
+        values[key] = value
+    try:
+        frontmatter = ArticleFrontmatter.model_validate(values)
+    except ValueError as exc:
+        raise ValueError(f"{path.name}: invalid frontmatter: {exc}") from exc
+    body = "\n".join(lines[closing + 1:]).strip()
+    modified_at = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC).replace(
+        tzinfo=None
+    )
+    return slug, frontmatter, body, modified_at
 
 
 def load_courses(path: Path | None = None) -> CourseData:
@@ -208,6 +253,62 @@ def sync_faculty(db: Session, path: Path | None = None) -> dict[str, int]:
     }
 
 
+def sync_advice(db: Session, directory: Path | None = None) -> dict[str, int]:
+    advice_dir = directory or Path(__file__).parents[1] / "data" / "advice"
+    files = sorted(advice_dir.glob("*.md")) if advice_dir.is_dir() else []
+    parsed = [parse_article_file(path) for path in files]
+    existing = {article.slug: article for article in db.scalars(select(Article)).all()}
+    seen = {slug for slug, _, _, _ in parsed}
+    added = updated = 0
+    for slug, frontmatter, body, modified_at in parsed:
+        article = existing.get(slug)
+        values = (
+            frontmatter.title,
+            frontmatter.category,
+            frontmatter.summary,
+            body,
+            frontmatter.author,
+            frontmatter.order,
+            modified_at,
+        )
+        if article is None:
+            db.add(
+                Article(
+                    slug=slug,
+                    title=frontmatter.title,
+                    category=frontmatter.category,
+                    summary=frontmatter.summary,
+                    body=body,
+                    author=frontmatter.author,
+                    order=frontmatter.order,
+                    updated_at=modified_at,
+                )
+            )
+            added += 1
+        elif (
+            article.title,
+            article.category,
+            article.summary,
+            article.body,
+            article.author,
+            article.order,
+            article.updated_at,
+        ) != values:
+            (
+                article.title,
+                article.category,
+                article.summary,
+                article.body,
+                article.author,
+                article.order,
+                article.updated_at,
+            ) = values
+            updated += 1
+    removed = db.execute(delete(Article).where(Article.slug.not_in(seen))).rowcount
+    db.commit()
+    return {"added": added, "updated": updated, "removed": removed or 0}
+
+
 def print_summary(command: str, summary: dict[str, int]) -> None:
     print(f"{command}: " + ", ".join(f"{key} {value}" for key, value in summary.items()))
 
@@ -215,7 +316,8 @@ def print_summary(command: str, summary: dict[str, int]) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "command", choices=("sync-courses", "sync-files", "sync-faculty", "sync")
+        "command",
+        choices=("sync-courses", "sync-files", "sync-faculty", "sync-advice", "sync"),
     )
     args = parser.parse_args()
     with SessionLocal() as db:
@@ -225,10 +327,13 @@ def main() -> None:
             print_summary(args.command, sync_files(db))
         elif args.command == "sync-faculty":
             print_summary(args.command, sync_faculty(db))
+        elif args.command == "sync-advice":
+            print_summary(args.command, sync_advice(db))
         else:
             print_summary("sync-courses", sync_courses(db))
             print_summary("sync-files", sync_files(db))
             print_summary("sync-faculty", sync_faculty(db))
+            print_summary("sync-advice", sync_advice(db))
 
 
 if __name__ == "__main__":

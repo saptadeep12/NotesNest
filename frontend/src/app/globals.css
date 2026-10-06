@@ -6,6 +6,60 @@ body {
   @apply bg-paper text-ink antialiased;
 }
 
+.article-body {
+  @apply max-w-prose text-base leading-7;
+}
+
+.article-body h1,
+.article-body h2,
+.article-body h3 {
+  @apply mt-8 font-semibold tracking-tight;
+}
+
+.article-body h1 {
+  @apply text-2xl;
+}
+
+.article-body h2 {
+  @apply text-xl;
+}
+
+.article-body h3 {
+  @apply text-lg;
+}
+
+.article-body p {
+  @apply mt-4;
+}
+
+.article-body ul {
+  @apply mt-4 list-disc space-y-2 pl-6;
+}
+
+.article-body ol {
+  @apply mt-4 list-decimal space-y-2 pl-6;
+}
+
+.article-body a {
+  @apply text-brand underline underline-offset-2;
+}
+
+.article-body blockquote {
+  @apply mt-4 border-l-4 border-brand/30 pl-4 italic text-ink/70;
+}
+
+.article-body code {
+  @apply rounded bg-ink/5 px-1.5 py-0.5 text-sm;
+}
+
+.article-body pre {
+  @apply mt-4 overflow-x-auto rounded-lg bg-ink px-4 py-3 text-sm leading-6 text-paper;
+}
+
+.article-body pre code {
+  @apply bg-transparent p-0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation: none !important;

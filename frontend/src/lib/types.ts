@@ -31,3 +31,18 @@ export type Faculty = {
   email: string | null;
   cabin: string | null;
 };
+
+export type ArticleSummary = {
+  id: number;
+  slug: string;
+  title: string;
+  category: string;
+  summary: string;
+  author: string | null;
+  order: number;
+  updated_at: string;
+};
+
+export type Article = ArticleSummary & {
+  body: string;
+};
