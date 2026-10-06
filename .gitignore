@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+.pytest_cache/
+.ruff_cache/
+node_modules/
+.next/
+.idea/
+.vscode/
+*.log
+*.tsbuildinfo
+*.db
+backend/storage/*
+!backend/storage/.gitkeep
+backend/data/faculty.json

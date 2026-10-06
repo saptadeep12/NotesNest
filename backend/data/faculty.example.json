@@ -1,0 +1,25 @@
+{
+  "faculty": [
+    {
+      "name": "Dr. Example One",
+      "designation": "Assistant Professor",
+      "department": "School of Computer Science",
+      "email": "example.one@example.edu",
+      "cabin": "AB1-101"
+    },
+    {
+      "name": "Prof. Sample Two",
+      "designation": "Associate Professor",
+      "department": "School of Mathematics",
+      "email": "sample.two@example.edu",
+      "cabin": "AB2-202"
+    },
+    {
+      "name": "Dr. Fiction Three",
+      "designation": "Lecturer",
+      "department": "School of Physics",
+      "email": "fiction.three@example.edu",
+      "cabin": "AB3-303"
+    }
+  ]
+}
