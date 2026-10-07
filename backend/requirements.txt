@@ -4,3 +4,5 @@ sqlalchemy==2.0.*
 psycopg[binary]==3.2.*
 alembic==1.14.*
 pydantic-settings==2.6.*
+boto3==1.35.*
+python-dotenv==1.0.*

@@ -60,7 +60,7 @@ export default function AdvicePage() {
           />
         </div>
       ) : !articles ? (
-        <div className="mt-8 h-24 animate-pulse rounded-xl bg-ink/10" aria-label="Loading articles" />
+        <div className="mt-8"><StateMessage title="Loading articles…" /></div>
       ) : articles.length === 0 ? (
         <div className="mt-8">
           <StateMessage title="No articles yet." />

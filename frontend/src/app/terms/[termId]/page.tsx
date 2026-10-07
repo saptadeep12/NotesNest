@@ -5,12 +5,14 @@ import { useCallback, useEffect, useState } from "react";
 
 import { ApiError, api } from "@/lib/api";
 import { StateMessage } from "@/components/StateMessage";
+import { SearchInput } from "@/components/SearchInput";
 import type { Subject, Term } from "@/lib/types";
 
 export default function TermPage({ params }: { params: { termId: string } }) {
   const [term, setTerm] = useState<Term | null>(null);
   const [subjects, setSubjects] = useState<Subject[] | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
+  const [query, setQuery] = useState("");
 
   const load = useCallback(() => {
     setError(null);
@@ -49,7 +51,7 @@ export default function TermPage({ params }: { params: { termId: string } }) {
           />
         </div>
       ) : !term || !subjects ? (
-        <p className="mt-6 animate-pulse text-ink/60">Loading subjects…</p>
+        <div className="mt-6"><StateMessage title="Loading subjects…" /></div>
       ) : (
         <>
           <p className="mt-8 text-sm font-semibold uppercase tracking-[0.18em] text-brand">{term.season} semester</p>
@@ -59,19 +61,51 @@ export default function TermPage({ params }: { params: { termId: string } }) {
               <StateMessage title="No subjects added for this semester yet." />
             </div>
           ) : (
-            <ul className="mt-8 grid gap-4 sm:grid-cols-2">
-              {subjects.map((subject) => (
-                <li key={subject.id}>
-                  <Link
-                    href={`/subjects/${subject.id}`}
-                    className="block min-h-28 rounded-xl border border-ink/10 bg-white p-5 transition hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
-                  >
-                    <p className="text-sm text-ink/60">{subject.code}</p>
-                    <p className="mt-2 text-lg font-medium">{subject.name}</p>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <>
+              <div className="mt-8">
+                <SearchInput
+                  label="Search by subject code or name"
+                  value={query}
+                  onChange={setQuery}
+                  placeholder="Search subjects"
+                />
+              </div>
+              {(() => {
+                const normalized = query.trim().toLowerCase();
+                const filtered = subjects.filter(
+                  (subject) =>
+                    !normalized ||
+                    subject.code.toLowerCase().includes(normalized) ||
+                    subject.name.toLowerCase().includes(normalized),
+                );
+                return (
+                  <>
+                    <p className="mt-4 text-sm text-ink/60" aria-live="polite">
+                      {filtered.length} {filtered.length === 1 ? "subject" : "subjects"}
+                    </p>
+                    {filtered.length === 0 ? (
+                      <div className="mt-4">
+                        <StateMessage title={`No subjects match “${query.trim()}”.`} />
+                      </div>
+                    ) : (
+                      <ul className="mt-4 grid gap-4 sm:grid-cols-2">
+                        {filtered.map((subject) => (
+                          <li key={subject.id}>
+                            <Link
+                              href={`/subjects/${subject.id}`}
+                              className="block min-h-28 rounded-xl border border-ink/10 bg-white p-5 transition hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
+                            >
+                              <p className="text-sm text-ink/60">{subject.code}</p>
+                              <p className="mt-2 text-lg font-medium">{subject.name}</p>
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </>
+                );
+              })()}
+            </>
           )}
         </>
       )}

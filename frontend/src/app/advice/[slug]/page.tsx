@@ -47,7 +47,7 @@ export default function AdviceArticlePage({ params }: { params: { slug: string }
           />
         </div>
       ) : !article ? (
-        <p className="mt-6 animate-pulse text-ink/60">Loading article…</p>
+        <div className="mt-6"><StateMessage title="Loading article…" /></div>
       ) : (
         <>
           <header className="mt-8 border-b border-ink/10 pb-6">

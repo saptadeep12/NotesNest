@@ -5,12 +5,13 @@ import re
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 
+from dotenv import load_dotenv
 from pydantic import BaseModel, field_validator
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.db.session import SessionLocal
 from app.models import Article, Faculty, Resource, Subject, Term
 from app.models.enums import ResourceType
 from app.services.storage import storage_root
@@ -162,10 +163,21 @@ def parse_filename(stem: str) -> tuple[str | None, int | None, str]:
 
 
 def sync_files(db: Session) -> dict[str, int]:
+    from app.services.storage import (
+        get_s3_client,
+        is_s3_backend,
+        object_exists_with_size,
+    )
+
     root = storage_root()
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    s3 = get_s3_client() if is_s3_backend() else None
     known = {subject.code: subject for subject in db.scalars(select(Subject)).all()}
     seen: set[str] = set()
     added = updated = skipped = 0
+    uploaded = unchanged = 0
     if root.is_dir():
         course_dirs = root.iterdir()
     else:
@@ -187,6 +199,14 @@ def sync_files(db: Session) -> dict[str, int]:
                     continue
                 relative = path.relative_to(root).as_posix()
                 seen.add(relative)
+                if s3 is not None:
+                    if object_exists_with_size(
+                        s3, settings.s3_bucket or "", relative, path.stat().st_size
+                    ):
+                        unchanged += 1
+                    else:
+                        s3.upload_file(str(path), settings.s3_bucket, relative)
+                        uploaded += 1
                 exam, year, title = (
                     parse_filename(path.stem)
                     if resource_type == ResourceType.pyq
@@ -208,9 +228,17 @@ def sync_files(db: Session) -> dict[str, int]:
                     resource.title, resource.exam, resource.year = title, exam, year
                     resource.subject_id, resource.type = subject.id, resource_type
                     updated += 1
-    removed = db.execute(delete(Resource).where(Resource.file_path.not_in(seen))).rowcount
+    stale_resources = db.scalars(select(Resource).where(Resource.file_path.not_in(seen))).all()
+    for resource in stale_resources:
+        if s3 is not None:
+            s3.delete_object(Bucket=settings.s3_bucket, Key=resource.file_path)
+    removed = len(stale_resources)
+    db.execute(delete(Resource).where(Resource.file_path.not_in(seen)))
     db.commit()
-    return {"added": added, "updated": updated, "removed": removed or 0, "skipped": skipped}
+    result = {"added": added, "updated": updated, "removed": removed, "skipped": skipped}
+    if s3 is not None:
+        result.update({"uploaded": uploaded, "unchanged": unchanged})
+    return result
 
 
 def sync_faculty(db: Session, path: Path | None = None) -> dict[str, int]:
@@ -313,14 +341,47 @@ def print_summary(command: str, summary: dict[str, int]) -> None:
     print(f"{command}: " + ", ".join(f"{key} {value}" for key, value in summary.items()))
 
 
+def target_description() -> tuple[str, str]:
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    parsed = urlsplit(settings.database_url)
+    host = parsed.hostname or "unknown"
+    return host, settings.s3_bucket or "(local storage)"
+
+
+def confirm_write(yes: bool) -> None:
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    is_remote = not settings.database_url.startswith("sqlite") or settings.storage_backend == "s3"
+    if not is_remote or yes:
+        return
+    host, bucket = target_description()
+    print(f"Target database host: {host}")
+    print(f"Target storage bucket: {bucket}")
+    if input("Type 'yes' to continue: ").strip().lower() != "yes":
+        raise SystemExit("Aborted.")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--env-file", type=Path)
+    parser.add_argument("--yes", action="store_true")
     parser.add_argument(
         "command",
         choices=("sync-courses", "sync-files", "sync-faculty", "sync-advice", "sync"),
     )
     args = parser.parse_args()
-    with SessionLocal() as db:
+    if args.env_file is not None:
+        load_dotenv(args.env_file, override=True)
+    from app.core.config import get_settings
+
+    get_settings()
+    confirm_write(args.yes)
+    from app.db.session import get_session_factory
+
+    with get_session_factory()() as db:
         if args.command == "sync-courses":
             print_summary(args.command, sync_courses(db))
         elif args.command == "sync-files":

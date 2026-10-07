@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { FacultyCard } from "@/components/FacultyCard";
+import { SearchInput } from "@/components/SearchInput";
 import { StateMessage } from "@/components/StateMessage";
 import { ApiError, api } from "@/lib/api";
 import type { Faculty } from "@/lib/types";
@@ -69,24 +70,21 @@ export default function FacultyPage() {
           />
         </div>
       ) : !faculty ? (
-        <div className="mt-8 h-12 animate-pulse rounded-lg bg-ink/10" aria-label="Loading faculty" />
+        <div className="mt-8"><StateMessage title="Loading faculty…" /></div>
       ) : faculty.length === 0 ? (
         <div className="mt-8">
           <StateMessage title="No faculty added yet." />
         </div>
       ) : (
         <>
-          <label htmlFor="faculty-search" className="mt-8 block text-sm font-medium">
-            Search by name or department
-          </label>
-          <input
-            id="faculty-search"
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search faculty"
-            className="mt-2 min-h-12 w-full rounded-lg border border-ink/20 bg-white px-3 py-3 focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 sm:max-w-md"
-          />
+          <div className="mt-8">
+            <SearchInput
+              label="Search by name or department"
+              value={query}
+              onChange={setQuery}
+              placeholder="Search faculty"
+            />
+          </div>
           <p className="mt-4 text-sm text-ink/60" aria-live="polite">
             {filteredFaculty.length} faculty
           </p>

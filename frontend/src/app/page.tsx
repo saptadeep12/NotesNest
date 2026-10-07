@@ -36,9 +36,7 @@ export default function Home() {
         <label htmlFor="term" className="block text-sm font-medium">
           Choose a semester
         </label>
-        {!terms && !error && (
-          <div className="mt-2 h-12 animate-pulse rounded-lg bg-ink/10" aria-label="Loading semesters" />
-        )}
+        {!terms && !error && <div className="mt-2"><StateMessage title="Loading semesters…" /></div>}
         {terms && (
           <select
             id="term"

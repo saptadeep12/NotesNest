@@ -1,0 +1,15 @@
+{
+  "functions": {
+    "app/main.py": {
+      "excludeFiles": [
+        "storage/**",
+        "data/**",
+        "tests/**",
+        "alembic/**",
+        ".venv/**",
+        "**/*.db",
+        "**/__pycache__/**"
+      ]
+    }
+  }
+}

@@ -56,7 +56,7 @@ export default function SubjectPage({ params }: { params: { subjectId: string } 
           />
         </div>
       ) : !subject || !resources ? (
-        <p className="mt-6 animate-pulse text-ink/60">Loading resources…</p>
+        <div className="mt-6"><StateMessage title="Loading resources…" /></div>
       ) : (
         <>
           <div className="mt-8">
