@@ -9,7 +9,7 @@ and read practical advice articles.
 - Semester and subject browsing
 - Client-side subject filtering by code or name
 - PYQ and notes tabs with View and Download actions
-- Searchable faculty directory
+- Searchable, expandable faculty directory
 - Markdown advice articles with category filters
 - Owner-managed content files and idempotent sync commands
 
@@ -17,9 +17,7 @@ and read practical advice articles.
 
 - **Frontend:** Next.js 14, React, TypeScript, Tailwind CSS
 - **Backend:** FastAPI, SQLAlchemy 2.0, Alembic, Pydantic
-- **Local database:** SQLite
-- **Production database:** Neon Postgres
-- **Production PDF storage:** Private Cloudflare R2 bucket
+- **Database:** SQLite locally; models remain portable to PostgreSQL
 - **Tooling:** Ruff, pytest, ESLint, TypeScript
 
 ## Quick start
@@ -49,9 +47,8 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000. See [deployment.md](docs/deployment.md) for the
-Vercel, Neon, and R2 setup. The backend migrations are run from the owner's
-machine against Neon, not during deployment.
+Open http://localhost:3000. Create `frontend/.env.local` only when changing
+the API URL from the default `http://localhost:8000`.
 
 ## Adding content
 
@@ -62,29 +59,34 @@ machine against Neon, not during deployment.
 | Faculty | `backend/data/faculty.json` | JSON; copy the example first | `python -m app.manage sync-faculty` |
 | Advice | `backend/data/advice/*.md` | Markdown with frontmatter | `python -m app.manage sync-advice` |
 
-Run `python -m app.manage sync` to run every sync in order. For production,
-use `python -m app.manage --env-file .env.production sync`; remote write
-commands ask for confirmation unless `--yes` is supplied. Content API caching
-means a published change may take up to about five minutes to appear.
+Run `python -m app.manage sync` to run every sync in order. The real faculty
+JSON and PDF files are gitignored on purpose.
 
 Advice frontmatter requires `title`, `category`, and `summary`. `author` and
 integer `order` are optional. Advice filenames must be lowercase kebab-case;
-the filename stem becomes the article slug. Real faculty JSON and PDFs are
-gitignored on purpose.
+the filename stem becomes the article slug.
 
 ## Project structure
 
 ```text
 backend/
-  app/{api,core,db,models,schemas,services}/
-  data/{courses.json,advice/,faculty.example.json}
-  alembic/
+  app/
+    api/          # FastAPI routes
+    core/         # Settings
+    db/           # Database base and sessions
+    models/       # SQLAlchemy models
+    schemas/      # Pydantic schemas
+    services/     # Storage helpers
+  data/           # Course, faculty, and advice source files
+  alembic/        # Database migrations
   tests/
 frontend/
-  src/{app,components,lib}/
+  src/
+    app/           # App Router pages
+    components/    # Shared UI
+    lib/           # API helper and types
 docs/
   architecture.md
-  deployment.md
 ```
 
 ## Screenshots
@@ -104,11 +106,11 @@ Screenshots are added by the owner:
 - [x] Faculty directory
 - [x] Advice articles
 - [x] Subject filter
-- [x] Vercel-ready production configuration
 - [ ] AI features (RAG over notes and PYQs)
+- [ ] Deployment to Vercel
 
 See the [architecture guide](docs/architecture.md) for the verified system
-design and API reference.
+design, API reference, and content workflow.
 
 ## Validation
 

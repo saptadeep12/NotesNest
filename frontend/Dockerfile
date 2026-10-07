@@ -5,7 +5,6 @@ RUN npm ci
 
 FROM node:20-alpine AS build
 WORKDIR /app
-ENV DOCKER_BUILD=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ARG NEXT_PUBLIC_API_URL=http://localhost:8000
