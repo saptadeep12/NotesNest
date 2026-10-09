@@ -98,6 +98,13 @@ Screenshots are added by the owner:
 - `docs/screenshots/faculty.png`
 - `docs/screenshots/advice.png`
 
+## Deployment
+
+The deployed architecture uses Vercel for both projects, Neon Postgres for the
+database, and private Backblaze B2 storage for PDFs through signed URLs. See
+the [deployment guide](docs/deployment.md). Before the first content sync,
+run `python -m app.manage --env-file .env.production check-storage`.
+
 ## Roadmap
 
 - [x] Project scaffold
@@ -107,7 +114,7 @@ Screenshots are added by the owner:
 - [x] Advice articles
 - [x] Subject filter
 - [ ] AI features (RAG over notes and PYQs)
-- [ ] Deployment to Vercel
+- [x] Deployment preparation for Vercel, Neon, and Backblaze B2
 
 See the [architecture guide](docs/architecture.md) for the verified system
 design, API reference, and content workflow.

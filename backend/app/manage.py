@@ -1,16 +1,18 @@
 """Synchronise course data and local PDF files with the database."""
 
 import argparse
+import os
 import re
+import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel, field_validator
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.db.session import SessionLocal
 from app.models import Article, Faculty, Resource, Subject, Term
 from app.models.enums import ResourceType
 from app.services.storage import storage_root
@@ -162,10 +164,20 @@ def parse_filename(stem: str) -> tuple[str | None, int | None, str]:
 
 
 def sync_files(db: Session) -> dict[str, int]:
+    from app.core.config import get_settings
+    from app.services.storage import (
+        get_s3_client,
+        is_s3_backend,
+        object_exists_with_size,
+    )
+
     root = storage_root()
+    settings = get_settings()
+    s3 = get_s3_client() if is_s3_backend() else None
     known = {subject.code: subject for subject in db.scalars(select(Subject)).all()}
     seen: set[str] = set()
     added = updated = skipped = 0
+    uploaded = unchanged = 0
     if root.is_dir():
         course_dirs = root.iterdir()
     else:
@@ -187,6 +199,14 @@ def sync_files(db: Session) -> dict[str, int]:
                     continue
                 relative = path.relative_to(root).as_posix()
                 seen.add(relative)
+                if s3 is not None:
+                    if object_exists_with_size(
+                        s3, settings.s3_bucket or "", relative, path.stat().st_size
+                    ):
+                        unchanged += 1
+                    else:
+                        s3.upload_file(str(path), settings.s3_bucket, relative)
+                        uploaded += 1
                 exam, year, title = (
                     parse_filename(path.stem)
                     if resource_type == ResourceType.pyq
@@ -208,9 +228,17 @@ def sync_files(db: Session) -> dict[str, int]:
                     resource.title, resource.exam, resource.year = title, exam, year
                     resource.subject_id, resource.type = subject.id, resource_type
                     updated += 1
-    removed = db.execute(delete(Resource).where(Resource.file_path.not_in(seen))).rowcount
+    stale_resources = db.scalars(select(Resource).where(Resource.file_path.not_in(seen))).all()
+    for resource in stale_resources:
+        if s3 is not None:
+            s3.delete_object(Bucket=settings.s3_bucket, Key=resource.file_path)
+    removed = len(stale_resources)
+    db.execute(delete(Resource).where(Resource.file_path.not_in(seen)))
     db.commit()
-    return {"added": added, "updated": updated, "removed": removed or 0, "skipped": skipped}
+    result = {"added": added, "updated": updated, "removed": removed, "skipped": skipped}
+    if s3 is not None:
+        result.update({"uploaded": uploaded, "unchanged": unchanged})
+    return result
 
 
 def sync_faculty(db: Session, path: Path | None = None) -> dict[str, int]:
@@ -313,14 +341,123 @@ def print_summary(command: str, summary: dict[str, int]) -> None:
     print(f"{command}: " + ", ".join(f"{key} {value}" for key, value in summary.items()))
 
 
+def load_env_file(path: Path) -> None:
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ[key.strip()] = value.strip().strip("\"'")
+
+
+def target_description() -> tuple[str, str]:
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    return urlsplit(settings.database_url).hostname or "unknown", settings.s3_bucket or "(local)"
+
+
+def confirm_write(yes: bool) -> None:
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    remote = not settings.database_url.startswith("sqlite") or settings.storage_backend == "s3"
+    if not remote or yes:
+        return
+    host, bucket = target_description()
+    print(f"Target database host: {host}")
+    print(f"Target storage bucket: {bucket}")
+    if input("Type 'yes' to continue: ").strip().lower() != "yes":
+        raise SystemExit("Aborted.")
+
+
+def check_storage() -> int:
+    from app.core.config import get_settings
+    from app.services.storage import get_s3_client
+
+    settings = get_settings()
+    if settings.storage_backend != "s3":
+        print("FAIL: STORAGE_BACKEND must be s3 for check-storage")
+        return 1
+    client = get_s3_client()
+    key = f"healthcheck/notesnest-{os.getpid()}.txt"
+    body = b"NotesNest storage healthcheck\n"
+    failed = False
+    try:
+        client.put_object(Bucket=settings.s3_bucket, Key=key, Body=body, ContentType="text/plain")
+        print("PASS: uploaded healthcheck object")
+        client.head_object(Bucket=settings.s3_bucket, Key=key)
+        print("PASS: HEAD healthcheck object")
+        for label, disposition in (
+            ("inline", 'inline; filename="notesnest-healthcheck.txt"'),
+            ("attachment", 'attachment; filename="notesnest-healthcheck.txt"'),
+        ):
+            url = client.generate_presigned_url(
+                "get_object",
+                Params={
+                    "Bucket": settings.s3_bucket,
+                    "Key": key,
+                    "ResponseContentType": "text/plain",
+                    "ResponseContentDisposition": disposition,
+                },
+                ExpiresIn=settings.s3_presign_seconds,
+            )
+            with urllib.request.urlopen(url, timeout=30) as response:
+                actual_type = response.headers.get("Content-Type", "")
+                actual_disposition = response.headers.get("Content-Disposition", "")
+                print(
+                    f"{'PASS' if response.status == 200 else 'FAIL'}: {label} GET "
+                    f"status={response.status} Content-Type={actual_type} "
+                    f"Content-Disposition={actual_disposition}"
+                )
+                if response.status != 200 or disposition != actual_disposition:
+                    print(
+                        "Content-Disposition was missing or ignored; forced downloads may "
+                        "not work with this provider. Report this to the owner."
+                    )
+                    failed = True
+    except Exception as exc:
+        print(f"FAIL: storage verification failed ({type(exc).__name__})")
+        failed = True
+    finally:
+        try:
+            client.delete_object(Bucket=settings.s3_bucket, Key=key)
+            print("PASS: deleted healthcheck object")
+        except Exception as exc:
+            print(f"FAIL: could not delete healthcheck object ({type(exc).__name__})")
+            failed = True
+    if not failed:
+        print("PASS: storage check completed")
+    return int(failed)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--env-file", type=Path)
+    parser.add_argument("--yes", action="store_true")
     parser.add_argument(
         "command",
-        choices=("sync-courses", "sync-files", "sync-faculty", "sync-advice", "sync"),
+        choices=(
+            "sync-courses",
+            "sync-files",
+            "sync-faculty",
+            "sync-advice",
+            "sync",
+            "check-storage",
+        ),
     )
     args = parser.parse_args()
-    with SessionLocal() as db:
+    if args.env_file:
+        load_env_file(args.env_file)
+    from app.core.config import get_settings
+
+    get_settings()
+    confirm_write(args.yes)
+    if args.command == "check-storage":
+        raise SystemExit(check_storage())
+    from app.db.session import get_session_factory
+
+    with get_session_factory()() as db:
         if args.command == "sync-courses":
             print_summary(args.command, sync_courses(db))
         elif args.command == "sync-files":
