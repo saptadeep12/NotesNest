@@ -1,6 +1,7 @@
 """Synchronise course data and local PDF files with the database."""
 
 import argparse
+import hashlib
 import os
 import re
 import urllib.request
@@ -177,13 +178,21 @@ def parse_filename(stem: str) -> tuple[str | None, int | None, str]:
     return exam, year, f"{title_exam} {year}"
 
 
-def sync_files(db: Session) -> dict[str, int]:
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def sync_files(db: Session, force: bool = False) -> dict[str, int]:
     from app.core.config import get_settings
     from app.services.storage import (
         delete_stored_file,
+        get_object_metadata,
         get_s3_client,
         is_s3_backend,
-        object_exists_with_size,
     )
 
     root = storage_root()
@@ -192,7 +201,7 @@ def sync_files(db: Session) -> dict[str, int]:
     known = {subject.code: subject for subject in db.scalars(select(Subject)).all()}
     seen: set[str] = set()
     added = updated = skipped = 0
-    uploaded = unchanged = 0
+    uploaded = uploaded_new = uploaded_changed = unchanged = 0
     if root.is_dir():
         course_dirs = root.iterdir()
     else:
@@ -215,13 +224,27 @@ def sync_files(db: Session) -> dict[str, int]:
                 relative = path.relative_to(root).as_posix()
                 seen.add(relative)
                 if s3 is not None:
-                    if object_exists_with_size(
-                        s3, settings.s3_bucket or "", relative, path.stat().st_size
-                    ):
+                    digest = file_sha256(path)
+                    metadata = get_object_metadata(
+                        s3, settings.s3_bucket or "", relative
+                    )
+                    remote_hash = (metadata or {}).get("Metadata", {}).get("sha256")
+                    is_new = metadata is None
+                    needs_upload = force or is_new or remote_hash != digest
+                    if not needs_upload:
                         unchanged += 1
                     else:
-                        s3.upload_file(str(path), settings.s3_bucket, relative)
+                        s3.upload_file(
+                            str(path),
+                            settings.s3_bucket,
+                            relative,
+                            ExtraArgs={"Metadata": {"sha256": digest}},
+                        )
                         uploaded += 1
+                        if is_new:
+                            uploaded_new += 1
+                        else:
+                            uploaded_changed += 1
                 exam, year, title = (
                     parse_filename(path.stem)
                     if resource_type == ResourceType.pyq
@@ -257,7 +280,14 @@ def sync_files(db: Session) -> dict[str, int]:
     db.commit()
     result = {"added": added, "updated": updated, "removed": removed, "skipped": skipped}
     if s3 is not None:
-        result.update({"uploaded": uploaded, "unchanged": unchanged})
+        result.update(
+            {
+                "uploaded": uploaded,
+                "uploaded_new": uploaded_new,
+                "uploaded_changed": uploaded_changed,
+                "unchanged": unchanged,
+            }
+        )
     return result
 
 
@@ -502,6 +532,7 @@ def main() -> None:
     parser.add_argument("--env-file", type=Path)
     parser.add_argument("--yes", action="store_true")
     parser.add_argument("--prune", action="store_true")
+    parser.add_argument("--force", action="store_true")
     parser.add_argument(
         "command",
         choices=(
@@ -531,7 +562,7 @@ def main() -> None:
                 prune_courses(db, data, args.yes)
             print_summary(args.command, sync_courses(db))
         elif args.command == "sync-files":
-            print_summary(args.command, sync_files(db))
+            print_summary(args.command, sync_files(db, force=args.force))
         elif args.command == "sync-faculty":
             print_summary(args.command, sync_faculty(db))
         elif args.command == "sync-advice":
@@ -541,7 +572,7 @@ def main() -> None:
             if args.prune:
                 prune_courses(db, data, args.yes)
             print_summary("sync-courses", sync_courses(db))
-            print_summary("sync-files", sync_files(db))
+            print_summary("sync-files", sync_files(db, force=args.force))
             print_summary("sync-faculty", sync_faculty(db))
             print_summary("sync-advice", sync_advice(db))
 

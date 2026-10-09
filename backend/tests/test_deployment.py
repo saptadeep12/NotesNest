@@ -66,7 +66,9 @@ def test_s3_sync_files_uploads_and_removes(tmp_path, monkeypatch, session_factor
 
     class FakeClient:
         def __init__(self):
-            self.objects: dict[str, int] = {"CSE0106/pyq/old.pdf": 10}
+            self.objects: dict[str, dict[str, object]] = {
+                "CSE0106/pyq/old.pdf": {"ContentLength": 10, "Metadata": {}}
+            }
             self.uploaded: list[str] = []
             self.deleted: list[str] = []
 
@@ -75,11 +77,14 @@ def test_s3_sync_files_uploads_and_removes(tmp_path, monkeypatch, session_factor
                 from botocore.exceptions import ClientError
 
                 raise ClientError({"Error": {"Code": "404"}}, "HeadObject")
-            return {"ContentLength": self.objects[Key]}
+            return self.objects[Key]
 
-        def upload_file(self, filename, bucket, key):
+        def upload_file(self, filename, bucket, key, ExtraArgs=None):
             self.uploaded.append(key)
-            self.objects[key] = Path(filename).stat().st_size
+            self.objects[key] = {
+                "ContentLength": Path(filename).stat().st_size,
+                "Metadata": (ExtraArgs or {}).get("Metadata", {}),
+            }
 
         def delete_object(self, *, Bucket, Key):
             self.deleted.append(Key)

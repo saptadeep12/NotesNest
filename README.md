@@ -59,8 +59,19 @@ the API URL from the default `http://localhost:8000`.
 | Faculty | `backend/data/faculty.json` | JSON; copy the example first | `python -m app.manage sync-faculty` |
 | Advice | `backend/data/advice/*.md` | Markdown with frontmatter | `python -m app.manage sync-advice` |
 
-Run `python -m app.manage sync` to run every sync in order. The real faculty
-JSON and PDF files are gitignored on purpose.
+Run `python -m app.manage sync` to run every sync in order. In S3 mode,
+`sync-files` stores a SHA-256 metadata value with each upload and compares
+content hashes on later runs, so replacing a PDF with another file of the same
+size is detected. Use `python -m app.manage sync-files --force` (or
+`sync --force`) to re-upload every PDF. The real faculty JSON and PDF files are
+gitignored on purpose.
+
+### Publishing new content
+
+Add or replace PDFs under `backend/storage/<CODE>/pyq/`, then run
+`python -m app.manage sync-files`. New files are uploaded, changed files are
+uploaded again, and identical files are reported as unchanged. Older remote
+objects without SHA-256 metadata are uploaded once to add the metadata.
 
 On a subject page, CAT and FAT tabs are always shown. FAT papers are split into
 Theory and Lab sections; Notes and Other appear only when they contain files.

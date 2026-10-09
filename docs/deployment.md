@@ -77,7 +77,14 @@ FAT into Theory and Lab, and shows Notes or Other only when those groups have
 files. Unrecognised PYQs are kept under Other with a warning during sync.
 
 Run `python -m app.manage --env-file .env.production sync-files` after adding
-PDFs. To remove old placeholder terms or retired subjects, run
+or replacing PDFs. In S3 mode, uploads include SHA-256 metadata and later
+syncs compare content hashes rather than file size, so replacing a PDF with
+another file of the same size is detected. Older objects without this
+metadata are uploaded once. Use `sync-files --force` (or `sync --force`) to
+re-upload every PDF. The summary reports new uploads, changed uploads,
+unchanged files, and removals.
+
+To remove old placeholder terms or retired subjects, run
 `python -m app.manage --env-file .env.production sync --prune`. Pruning
 permanently deletes unlisted terms, subjects, resources, and stored files;
 review the printed plan and confirm, or use `--yes` deliberately.

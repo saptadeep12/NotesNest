@@ -85,12 +85,12 @@ def get_file_response(
     )
 
 
-def object_exists_with_size(client: Any, bucket: str, key: str, size: int) -> bool:
+def get_object_metadata(client: Any, bucket: str, key: str) -> dict[str, Any] | None:
     try:
-        return client.head_object(Bucket=bucket, Key=key).get("ContentLength") == size
+        return client.head_object(Bucket=bucket, Key=key)
     except ClientError as exc:
         if exc.response.get("Error", {}).get("Code") in {"404", "NoSuchKey", "NotFound"}:
-            return False
+            return None
         raise
 
 

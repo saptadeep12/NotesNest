@@ -1,6 +1,15 @@
 import json
+from pathlib import Path
+from types import SimpleNamespace
 
-from app.manage import load_courses, parse_filename, prune_courses, sync_courses, sync_files
+from app.manage import (
+    file_sha256,
+    load_courses,
+    parse_filename,
+    prune_courses,
+    sync_courses,
+    sync_files,
+)
 from app.models import Resource, Subject, Term
 from app.models.enums import ResourceType
 
@@ -77,6 +86,66 @@ def test_sync_files_warns_for_unrecognised_pyq(session_factory, tmp_path, monkey
         sync_files(db)
 
     assert "it will appear under 'Other'" in capsys.readouterr().out
+
+
+def test_s3_sync_compares_pdf_content_and_force_uploads(
+    session_factory, tmp_path, monkeypatch
+):
+    pdf = tmp_path / "CSE0106" / "pyq" / "CAT-2025.pdf"
+    pdf.parent.mkdir(parents=True)
+    pdf.write_bytes(b"ab")
+
+    class FakeClient:
+        def __init__(self):
+            self.objects = {
+                "CSE0106/pyq/CAT-2025.pdf": {
+                    "ContentLength": 2,
+                    "Metadata": {"sha256": file_sha256(pdf)},
+                }
+            }
+            self.uploads = []
+
+        def head_object(self, *, Bucket, Key):
+            from botocore.exceptions import ClientError
+
+            if Key not in self.objects:
+                raise ClientError({"Error": {"Code": "404"}}, "HeadObject")
+            return self.objects[Key]
+
+        def upload_file(self, filename, bucket, key, ExtraArgs=None):
+            self.uploads.append(key)
+            self.objects[key] = {
+                "ContentLength": Path(filename).stat().st_size,
+                "Metadata": (ExtraArgs or {}).get("Metadata", {}),
+            }
+
+        def delete_object(self, *, Bucket, Key):
+            self.objects.pop(Key, None)
+
+    fake = FakeClient()
+    monkeypatch.setattr("app.manage.storage_root", lambda: tmp_path)
+    monkeypatch.setattr("app.services.storage.get_s3_client", lambda: fake)
+    monkeypatch.setattr("app.services.storage.is_s3_backend", lambda: True)
+    monkeypatch.setattr(
+        "app.core.config.get_settings",
+        lambda: SimpleNamespace(s3_bucket="notes"),
+    )
+
+    with session_factory() as db:
+        same = sync_files(db)
+        assert same["unchanged"] == 1
+        assert same["uploaded"] == 0
+        fake.objects["CSE0106/pyq/CAT-2025.pdf"]["Metadata"] = {}
+        missing_metadata = sync_files(db)
+        assert missing_metadata["uploaded_changed"] == 1
+        pdf.write_bytes(b"cd")
+        changed = sync_files(db)
+        assert changed["uploaded_new"] == 0
+        assert changed["uploaded_changed"] == 1
+        assert fake.objects["CSE0106/pyq/CAT-2025.pdf"]["Metadata"]["sha256"] == file_sha256(pdf)
+        forced = sync_files(db, force=True)
+        assert forced["uploaded"] == 1
+        assert forced["uploaded_changed"] == 1
 
 
 def test_prune_courses_removes_unlisted_subject_and_term(
