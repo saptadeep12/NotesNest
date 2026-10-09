@@ -66,3 +66,9 @@ Create separate projects with root directories `backend` and `frontend`.
 The backend uses the pooled Neon URL and the B2 `S3_*` variables. The frontend
 uses `NEXT_PUBLIC_API_URL` set to the backend URL. Keep `DOCKER_BUILD` unset on
 Vercel so standalone output is not enabled.
+
+### Troubleshooting: `uv lock ... No project table found`
+
+Do not add a partial `pyproject.toml` to `backend/`. Keep Ruff configuration
+in `ruff.toml`, pytest configuration in `pytest.ini`, and runtime dependencies
+in `requirements.txt`.
