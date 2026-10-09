@@ -147,7 +147,10 @@ def sync_courses(db: Session, path: Path | None = None) -> dict[str, int]:
     return {"added": added, "updated": updated, "removed": 0, "skipped": 0}
 
 
-_PYQ_RE = re.compile(r"(cat-?1|cat-?2|fat)[-_ ]?(\d{4})", re.IGNORECASE)
+_PYQ_RE = re.compile(
+    r"(cat-?1|cat-?2|cat|fat(?:[-_ ]?(?:theory|lab))?)[-_ ]?(\d{4})(?!\d)",
+    re.IGNORECASE,
+)
 
 
 def prettify_stem(stem: str) -> str:
@@ -158,14 +161,26 @@ def parse_filename(stem: str) -> tuple[str | None, int | None, str]:
     match = _PYQ_RE.search(stem)
     if match is None:
         return None, None, prettify_stem(stem)
-    exam = match.group(1).upper().replace("CAT1", "CAT-1").replace("CAT2", "CAT-2")
+    raw_exam = match.group(1).lower().replace("_", "-").replace(" ", "-")
+    if raw_exam in {"cat1", "cat-1"}:
+        exam = "CAT-1"
+    elif raw_exam in {"cat2", "cat-2"}:
+        exam = "CAT-2"
+    elif raw_exam == "cat":
+        exam = "CAT"
+    elif raw_exam.endswith("lab"):
+        exam = "FAT-Lab"
+    else:
+        exam = "FAT-Theory"
     year = int(match.group(2))
-    return exam, year, f"{exam} {year}"
+    title_exam = exam if exam.startswith("CAT-") else exam.replace("-", " ")
+    return exam, year, f"{title_exam} {year}"
 
 
 def sync_files(db: Session) -> dict[str, int]:
     from app.core.config import get_settings
     from app.services.storage import (
+        delete_stored_file,
         get_s3_client,
         is_s3_backend,
         object_exists_with_size,
@@ -212,6 +227,12 @@ def sync_files(db: Session) -> dict[str, int]:
                     if resource_type == ResourceType.pyq
                     else (None, None, prettify_stem(path.stem))
                 )
+                if resource_type == ResourceType.pyq and exam is None:
+                    print(
+                        f"Warning: {relative} does not match expected names like "
+                        "CAT1-2025.pdf, CAT2-2025.pdf, FAT-Theory-2025.pdf, "
+                        "FAT-Lab-2025.pdf; it will appear under 'Other'"
+                    )
                 resource = db.scalar(select(Resource).where(Resource.file_path == relative))
                 values = (title, exam, year, subject.id, resource_type)
                 if resource is None:
@@ -230,8 +251,7 @@ def sync_files(db: Session) -> dict[str, int]:
                     updated += 1
     stale_resources = db.scalars(select(Resource).where(Resource.file_path.not_in(seen))).all()
     for resource in stale_resources:
-        if s3 is not None:
-            s3.delete_object(Bucket=settings.s3_bucket, Key=resource.file_path)
+        delete_stored_file(resource.file_path, s3)
     removed = len(stale_resources)
     db.execute(delete(Resource).where(Resource.file_path.not_in(seen)))
     db.commit()
@@ -239,6 +259,52 @@ def sync_files(db: Session) -> dict[str, int]:
     if s3 is not None:
         result.update({"uploaded": uploaded, "unchanged": unchanged})
     return result
+
+
+def prune_courses(db: Session, data: CourseData, yes: bool = False) -> None:
+    desired_codes = {item.code for item in data.subjects}
+    desired_terms = {
+        (item.season, item.academic_year, item.is_freshers)
+        for item in data.terms
+    }
+    terms = db.scalars(select(Term)).all()
+    subjects = db.scalars(select(Subject)).all()
+    stale_terms = [
+        term
+        for term in terms
+        if (term.season, term.academic_year, term.is_freshers) not in desired_terms
+    ]
+    stale_subjects = [subject for subject in subjects if subject.code not in desired_codes]
+    resources = [
+        resource
+        for subject in stale_subjects
+        for resource in db.scalars(
+            select(Resource).where(Resource.subject_id == subject.id)
+        ).all()
+    ]
+    if not stale_terms and not stale_subjects:
+        return
+    print("Prune plan:")
+    for term in stale_terms:
+        print(f"  Delete term: {term.name}")
+    for subject in stale_subjects:
+        count = sum(1 for resource in resources if resource.subject_id == subject.id)
+        print(f"  Delete subject: {subject.code} ({count} resources)")
+    print(f"Resources to delete: {len(resources)}")
+    if not yes and input("Type 'yes' to continue pruning: ").strip().lower() != "yes":
+        raise SystemExit("Aborted.")
+
+    from app.services.storage import delete_stored_file, get_s3_client, is_s3_backend
+
+    client = get_s3_client() if is_s3_backend() else None
+    for resource in resources:
+        delete_stored_file(resource.file_path, client)
+    db.execute(delete(Resource).where(Resource.id.in_([resource.id for resource in resources])))
+    for term in stale_terms:
+        db.delete(term)
+    for subject in stale_subjects:
+        db.delete(subject)
+    db.commit()
 
 
 def sync_faculty(db: Session, path: Path | None = None) -> dict[str, int]:
@@ -435,6 +501,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--env-file", type=Path)
     parser.add_argument("--yes", action="store_true")
+    parser.add_argument("--prune", action="store_true")
     parser.add_argument(
         "command",
         choices=(
@@ -459,6 +526,9 @@ def main() -> None:
 
     with get_session_factory()() as db:
         if args.command == "sync-courses":
+            data = load_courses()
+            if args.prune:
+                prune_courses(db, data, args.yes)
             print_summary(args.command, sync_courses(db))
         elif args.command == "sync-files":
             print_summary(args.command, sync_files(db))
@@ -467,6 +537,9 @@ def main() -> None:
         elif args.command == "sync-advice":
             print_summary(args.command, sync_advice(db))
         else:
+            data = load_courses()
+            if args.prune:
+                prune_courses(db, data, args.yes)
             print_summary("sync-courses", sync_courses(db))
             print_summary("sync-files", sync_files(db))
             print_summary("sync-faculty", sync_faculty(db))

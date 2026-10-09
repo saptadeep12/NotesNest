@@ -55,12 +55,20 @@ the API URL from the default `http://localhost:8000`.
 | Content | Location | Format | Sync command |
 | --- | --- | --- | --- |
 | Courses and terms | `backend/data/courses.json` | JSON | `python -m app.manage sync-courses` |
-| PDFs | `backend/storage/<CODE>/pyq` or `notes` | PDF | `python -m app.manage sync-files` |
+| PDFs | `backend/storage/<CODE>/pyq/` | PDF filenames such as `CAT-2025.pdf` (single CAT), `CAT1-2025.pdf`, `CAT2-2025.pdf`, `FAT-Theory-2025.pdf`, or `FAT-Lab-2025.pdf` | `python -m app.manage sync-files` |
 | Faculty | `backend/data/faculty.json` | JSON; copy the example first | `python -m app.manage sync-faculty` |
 | Advice | `backend/data/advice/*.md` | Markdown with frontmatter | `python -m app.manage sync-advice` |
 
 Run `python -m app.manage sync` to run every sync in order. The real faculty
 JSON and PDF files are gitignored on purpose.
+
+On a subject page, CAT and FAT tabs are always shown. FAT papers are split into
+Theory and Lab sections; Notes and Other appear only when they contain files.
+Unrecognised PYQ filenames appear under Other. To remove old placeholder terms
+or retired subjects, use `python -m app.manage sync-courses --prune` (or
+`sync --prune`). Pruning permanently deletes unlisted terms, subjects,
+resources, and stored files; review the printed plan and confirm with `yes`, or
+use `--yes` deliberately.
 
 Advice frontmatter requires `title`, `category`, and `summary`. `author` and
 integer `order` are optional. Advice filenames must be lowercase kebab-case;

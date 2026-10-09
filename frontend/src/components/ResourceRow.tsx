@@ -1,13 +1,19 @@
 import { fileUrl } from "@/lib/api";
 import type { Resource } from "@/lib/types";
 
-export function ResourceRow({ resource }: { resource: Resource }) {
+export function ResourceRow({
+  resource,
+  showExam = true,
+}: {
+  resource: Resource;
+  showExam?: boolean;
+}) {
   return (
     <li className="flex flex-col gap-4 rounded-xl border border-ink/10 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
         <p className="font-medium">{resource.title}</p>
         <div className="mt-2 flex flex-wrap gap-2">
-          {resource.exam && (
+          {showExam && resource.exam && resource.exam !== "CAT" && (
             <span className="rounded-full bg-brand/10 px-2.5 py-1 text-xs text-brand">
               {resource.exam}
             </span>

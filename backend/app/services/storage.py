@@ -92,3 +92,16 @@ def object_exists_with_size(client: Any, bucket: str, key: str, size: int) -> bo
         if exc.response.get("Error", {}).get("Code") in {"404", "NoSuchKey", "NotFound"}:
             return False
         raise
+
+
+def delete_stored_file(file_path: str, client: Any | None = None) -> None:
+    if is_s3_backend():
+        settings = get_settings()
+        (client or get_s3_client()).delete_object(
+            Bucket=settings.s3_bucket,
+            Key=file_path,
+        )
+        return
+    path = resolve_path(file_path)
+    if path.is_file():
+        path.unlink()

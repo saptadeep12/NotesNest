@@ -45,7 +45,13 @@ export default function TermPage({ params }: { params: { termId: string } }) {
         <div className="mt-6">
           <StateMessage
             title={error.status === 404 ? "Semester not found." : "We couldn’t load this semester."}
-            description={error.status === null ? "Check that the backend is running, then try again." : undefined}
+            description={
+              error.status === null
+                ? process.env.NODE_ENV === "development"
+                  ? "Check that the backend is running, then try again."
+                  : "Something went wrong while loading this page. Please try again in a moment."
+                : undefined
+            }
             tone={error.status === 404 ? "default" : "error"}
             action={error.status === 404 ? undefined : { label: "Retry", onClick: load }}
           />
@@ -92,7 +98,7 @@ export default function TermPage({ params }: { params: { termId: string } }) {
                         {filtered.map((subject) => (
                           <li key={subject.id}>
                             <Link
-                              href={`/subjects/${subject.id}`}
+                              href={`/subjects/${subject.id}?term=${params.termId}`}
                               className="block min-h-28 rounded-xl border border-ink/10 bg-white p-5 transition hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
                             >
                               <p className="text-sm text-ink/60">{subject.code}</p>

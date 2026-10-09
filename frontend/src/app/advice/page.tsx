@@ -52,7 +52,9 @@ export default function AdvicePage() {
             title="We couldn’t load the advice."
             description={
               error.status === null
-                ? "Check that the backend is running on port 8000, then try again."
+                ? process.env.NODE_ENV === "development"
+                  ? "Check that the backend is running on port 8000, then try again."
+                  : "Something went wrong while loading this page. Please try again in a moment."
                 : "Please try again in a moment."
             }
             tone="error"

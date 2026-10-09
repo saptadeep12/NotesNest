@@ -41,7 +41,13 @@ export default function AdviceArticlePage({ params }: { params: { slug: string }
         <div className="mt-6">
           <StateMessage
             title={error.status === 404 ? "Article not found." : "We couldn’t load this article."}
-            description={error.status === null ? "Check that the backend is running, then try again." : undefined}
+            description={
+              error.status === null
+                ? process.env.NODE_ENV === "development"
+                  ? "Check that the backend is running, then try again."
+                  : "Something went wrong while loading this page. Please try again in a moment."
+                : undefined
+            }
             tone={error.status === 404 ? "default" : "error"}
             action={error.status === 404 ? undefined : { label: "Retry", onClick: load }}
           />

@@ -1,20 +1,14 @@
 {
   "subjects": [
-    {"code": "SAMPLE101", "name": "Sample Subject A"},
-    {"code": "SAMPLE102", "name": "Sample Subject B"},
-    {"code": "SAMPLE103", "name": "Sample Subject C"}
+    {"code": "CSE0106", "name": "Python Programming"},
+    {"code": "ENG1003", "name": "Business Communication"},
+    {"code": "MAT1101", "name": "Calculus"},
+    {"code": "MAT1102", "name": "Probability and Distribution Theory"},
+    {"code": "MAT1103", "name": "Excel and R for Data Analysis"},
+    {"code": "MAT1104", "name": "Discrete Mathematics and its Application"}
   ],
   "terms": [
-    {"season": "fall", "academic_year": "2024-25", "is_freshers": false, "subjects": []},
-    {"season": "fall", "academic_year": "2024-25", "is_freshers": true, "subjects": []},
-    {"season": "winter", "academic_year": "2024-25", "is_freshers": false, "subjects": []},
-    {"season": "winter", "academic_year": "2024-25", "is_freshers": true, "subjects": []},
-    {"season": "fall", "academic_year": "2025-26", "is_freshers": false, "subjects": []},
-    {"season": "fall", "academic_year": "2025-26", "is_freshers": true, "subjects": []},
-    {"season": "winter", "academic_year": "2025-26", "is_freshers": false, "subjects": []},
-    {"season": "winter", "academic_year": "2025-26", "is_freshers": true, "subjects": []},
-    {"season": "fall", "academic_year": "2026-27", "is_freshers": false,
-     "subjects": ["SAMPLE101", "SAMPLE102", "SAMPLE103"]},
-    {"season": "fall", "academic_year": "2026-27", "is_freshers": true, "subjects": []}
+    {"season": "fall", "academic_year": "2025-26", "is_freshers": true,
+     "subjects": ["CSE0106", "ENG1003", "MAT1101", "MAT1102", "MAT1103", "MAT1104"]}
   ]
 }

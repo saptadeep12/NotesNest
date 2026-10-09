@@ -22,6 +22,11 @@ app.add_middleware(
 async def add_cache_headers(request: Request, call_next):
     response = await call_next(request)
     path = request.url.path
+    if path.startswith("/api/v1"):
+        vary_values = [value.strip() for value in response.headers.get("Vary", "").split(",")]
+        if not any(value.lower() == "origin" for value in vary_values):
+            vary_values.append("Origin")
+        response.headers["Vary"] = ", ".join(value for value in vary_values if value)
     is_file = re.fullmatch(r"/api/v1/resources/\d+/file", path) is not None
     if (
         request.method == "GET"

@@ -67,8 +67,32 @@ The backend uses the pooled Neon URL and the B2 `S3_*` variables. The frontend
 uses `NEXT_PUBLIC_API_URL` set to the backend URL. Keep `DOCKER_BUILD` unset on
 Vercel so standalone output is not enabled.
 
+## Adding content
+
+Put question papers in `backend/storage/<COURSE_CODE>/pyq/`. Use
+`CAT-2025.pdf` for a single CAT, or `CAT1-2025.pdf`, `CAT2-2025.pdf`, `FAT-Theory-2025.pdf`, and
+`FAT-Lab-2025.pdf`; separators may be hyphens, underscores, or spaces and
+matching is case-insensitive. The subject page shows CAT and FAT tabs, splits
+FAT into Theory and Lab, and shows Notes or Other only when those groups have
+files. Unrecognised PYQs are kept under Other with a warning during sync.
+
+Run `python -m app.manage --env-file .env.production sync-files` after adding
+PDFs. To remove old placeholder terms or retired subjects, run
+`python -m app.manage --env-file .env.production sync --prune`. Pruning
+permanently deletes unlisted terms, subjects, resources, and stored files;
+review the printed plan and confirm, or use `--yes` deliberately.
+
 ### Troubleshooting: `uv lock ... No project table found`
 
 Do not add a partial `pyproject.toml` to `backend/`. Keep Ruff configuration
 in `ruff.toml`, pytest configuration in `pytest.ini`, and runtime dependencies
 in `requirements.txt`.
+
+### Browser shows a CORS error but the API returns 200 with `X-Vercel-Cache: HIT`
+
+This can happen when the CDN cached a response without CORS headers because
+the original request had no `Origin` header or came from a disallowed origin.
+The API now always sends `Vary: Origin` under `/api/v1`, so CDN entries vary by
+origin. After changing `CORS_ORIGINS`, redeploy the backend. CORS allows only
+the exact origins listed there: use the production frontend URL, not temporary
+per-deployment URLs.

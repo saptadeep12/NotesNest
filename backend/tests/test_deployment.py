@@ -40,16 +40,16 @@ def test_s3_file_response_sets_disposition(monkeypatch):
     monkeypatch.setattr(storage, "get_settings", lambda: settings)
     monkeypatch.setattr(storage, "get_s3_client", lambda: FakeClient())
 
-    response = storage.get_file_response("SAMPLE101/pyq/CAT1-2024.pdf")
+    response = storage.get_file_response("CSE0106/pyq/CAT1-2024.pdf")
     assert isinstance(response, RedirectResponse)
     assert response.status_code == 307
     assert response.headers["cache-control"] == "no-store"
-    assert calls[0]["params"]["Key"] == "SAMPLE101/pyq/CAT1-2024.pdf"
+    assert calls[0]["params"]["Key"] == "CSE0106/pyq/CAT1-2024.pdf"
     assert calls[0]["params"]["ResponseContentDisposition"] == (
         'inline; filename="CAT1-2024.pdf"'
     )
 
-    storage.get_file_response("SAMPLE101/pyq/CAT1-2024.pdf", download=True)
+    storage.get_file_response("CSE0106/pyq/CAT1-2024.pdf", download=True)
     assert calls[1]["params"]["ResponseContentDisposition"] == (
         'attachment; filename="CAT1-2024.pdf"'
     )
@@ -60,13 +60,13 @@ def test_s3_sync_files_uploads_and_removes(tmp_path, monkeypatch, session_factor
     from app.models import Resource, Subject
     from app.models.enums import ResourceType
 
-    pdf = tmp_path / "SAMPLE101" / "pyq" / "CAT1-2024.pdf"
+    pdf = tmp_path / "CSE0106" / "pyq" / "CAT1-2024.pdf"
     pdf.parent.mkdir(parents=True)
     pdf.write_bytes(b"pdf")
 
     class FakeClient:
         def __init__(self):
-            self.objects: dict[str, int] = {"SAMPLE101/pyq/old.pdf": 10}
+            self.objects: dict[str, int] = {"CSE0106/pyq/old.pdf": 10}
             self.uploaded: list[str] = []
             self.deleted: list[str] = []
 
@@ -95,13 +95,13 @@ def test_s3_sync_files_uploads_and_removes(tmp_path, monkeypatch, session_factor
     )
 
     with session_factory() as db:
-        subject = db.query(Subject).filter_by(code="SAMPLE101").one()
+        subject = db.query(Subject).filter_by(code="CSE0106").one()
         db.add(
             Resource(
                 subject_id=subject.id,
                 type=ResourceType.pyq,
                 title="Old",
-                file_path="SAMPLE101/pyq/old.pdf",
+                file_path="CSE0106/pyq/old.pdf",
             )
         )
         db.commit()
@@ -109,8 +109,8 @@ def test_s3_sync_files_uploads_and_removes(tmp_path, monkeypatch, session_factor
 
     assert result["uploaded"] == 1
     assert result["removed"] == 1
-    assert fake.uploaded == ["SAMPLE101/pyq/CAT1-2024.pdf"]
-    assert fake.deleted == ["SAMPLE101/pyq/old.pdf"]
+    assert fake.uploaded == ["CSE0106/pyq/CAT1-2024.pdf"]
+    assert fake.deleted == ["CSE0106/pyq/old.pdf"]
 
 
 def test_api_cache_headers(client):
@@ -118,6 +118,26 @@ def test_api_cache_headers(client):
         "public, max-age=0, s-maxage=300, stale-while-revalidate=600"
     )
     assert "cache-control" not in client.get("/api/v1/health").headers
+
+
+def test_api_vary_origin_for_missing_allowed_and_disallowed_origins(client):
+    no_origin = client.get("/api/v1/terms")
+    assert "access-control-allow-origin" not in no_origin.headers
+    assert no_origin.headers["vary"].lower().split(", ").count("origin") == 1
+
+    allowed = client.get(
+        "/api/v1/terms",
+        headers={"Origin": "http://localhost:3000"},
+    )
+    assert allowed.headers["access-control-allow-origin"] == "http://localhost:3000"
+    assert allowed.headers["vary"].lower().split(", ").count("origin") == 1
+
+    disallowed = client.get(
+        "/api/v1/terms",
+        headers={"Origin": "https://not-allowed.example"},
+    )
+    assert "access-control-allow-origin" not in disallowed.headers
+    assert disallowed.headers["vary"].lower().split(", ").count("origin") == 1
 
 
 def test_confirmation_guard_requires_yes(monkeypatch):
