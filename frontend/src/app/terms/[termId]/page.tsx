@@ -95,7 +95,7 @@ export default function TermPage({ params }: { params: { termId: string } }) {
                 );
                 return (
                   <>
-                    <p className="mt-4 text-sm text-ink/60" aria-live="polite">
+                    <p className="mt-4 text-sm text-ink/75" aria-live="polite">
                       {filtered.length} {filtered.length === 1 ? "subject" : "subjects"}
                     </p>
                     {filtered.length === 0 ? (
@@ -108,9 +108,9 @@ export default function TermPage({ params }: { params: { termId: string } }) {
                           <li key={subject.id}>
                             <Link
                               href={`/subjects/${subject.id}?term=${params.termId}`}
-                              className="block min-h-28 rounded-xl border border-ink/10 bg-white p-5 transition hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
+                              className="block min-h-28 rounded-xl border border-ink/20 bg-white p-5 transition hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
                             >
-                              <p className="text-sm text-ink/60">{subject.code}</p>
+                              <p className="text-sm text-ink/75">{subject.code}</p>
                               <p className="mt-2 text-lg font-medium">{subject.name}</p>
                             </Link>
                           </li>

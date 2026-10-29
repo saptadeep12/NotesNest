@@ -16,7 +16,7 @@ export function StateMessage({
       className={`rounded-xl border px-5 py-8 ${
         tone === "error"
           ? "border-red-200 bg-red-50 text-red-900"
-          : "border-ink/10 bg-white"
+          : "border-ink/20 bg-white"
       }`}
       role={tone === "error" ? "alert" : undefined}
     >

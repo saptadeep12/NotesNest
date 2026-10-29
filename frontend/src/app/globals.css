@@ -6,6 +6,29 @@ body {
   @apply bg-paper text-ink antialiased;
 }
 
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid theme("colors.brand.DEFAULT");
+  outline-offset: 3px;
+}
+
+input::placeholder {
+  color: theme("colors.ink");
+  opacity: 0.65;
+}
+
+.sr-only:focus {
+  position: fixed;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
 .skeleton {
   animation: skeleton-pulse 1.8s ease-in-out infinite;
 }

@@ -1,3 +1,5 @@
+import { useId } from "react";
+
 type SearchInputProps = {
   label: string;
   value: string;
@@ -6,14 +8,16 @@ type SearchInputProps = {
 };
 
 export function SearchInput({ label, value, onChange, placeholder }: SearchInputProps) {
+  const inputId = useId();
+
   return (
     <div className="max-w-md">
-      <label htmlFor="search-input" className="block text-sm font-medium">
+      <label htmlFor={inputId} className="block text-sm font-medium">
         {label}
       </label>
       <div className="relative mt-2">
         <input
-          id="search-input"
+          id={inputId}
           type="search"
           value={value}
           onChange={(event) => onChange(event.target.value)}
@@ -25,7 +29,7 @@ export function SearchInput({ label, value, onChange, placeholder }: SearchInput
             type="button"
             aria-label={`Clear ${label.toLowerCase()}`}
             onClick={() => onChange("")}
-            className="absolute right-2 top-1/2 min-h-9 min-w-9 -translate-y-1/2 rounded-md text-xl leading-none text-ink/60 hover:text-ink focus:outline-none focus:ring-2 focus:ring-brand"
+            className="absolute right-2 top-1/2 min-h-9 min-w-9 -translate-y-1/2 rounded-md text-xl leading-none text-ink/75 hover:text-ink focus:outline-none focus:ring-2 focus:ring-brand"
           >
             ×
           </button>

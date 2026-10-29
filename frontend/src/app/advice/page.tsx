@@ -102,7 +102,7 @@ export default function AdvicePage() {
                 <li key={article.id}>
                   <Link
                     href={`/advice/${article.slug}`}
-                    className="block h-full rounded-xl border border-ink/10 bg-white p-5 transition hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
+                    className="block h-full rounded-xl border border-ink/20 bg-white p-5 transition hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
                   >
                     <p className="text-xs font-semibold uppercase tracking-[0.15em] text-brand">
                       {article.category}

@@ -110,8 +110,9 @@ function PapersContent() {
           </select>
         </div>
       </div>
+      <div id="paper-results" tabIndex={-1} aria-live="polite" aria-atomic="true">
       {query.trim().length < 2 ? (
-        <p className="mt-8 text-sm text-ink/60">Type at least 2 characters of a subject code or name.</p>
+        <p className="mt-8 text-sm text-ink/70">Type at least 2 characters of a subject code or name.</p>
       ) : loading ? (
         <div className="mt-8" aria-busy="true">
           <span className="sr-only" role="status">Loading...</span>
@@ -139,7 +140,7 @@ function PapersContent() {
         </div>
       ) : (
         <div className="mt-8 space-y-8">
-          <p className="text-sm text-ink/60">{papers?.length ?? 0} {papers?.length === 1 ? "paper" : "papers"}</p>
+          <p className="text-sm text-ink/75">{papers?.length ?? 0} {papers?.length === 1 ? "paper" : "papers"}</p>
           {groups.map(([subjectId, group]) => (
             <section key={subjectId} aria-labelledby={`subject-${subjectId}`}>
               <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -151,6 +152,7 @@ function PapersContent() {
           ))}
         </div>
       )}
+      </div>
     </section>
   );
 }

@@ -5,9 +5,9 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#1f2430",
-        paper: "#fafaf7",
-        brand: { DEFAULT: "#2f5d50", dark: "#1f4036" },
+        ink: "#18212b",
+        paper: "#ffffff",
+        brand: { DEFAULT: "#245447", dark: "#183c31" },
       },
     },
   },

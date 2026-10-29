@@ -87,7 +87,7 @@ export default function FacultyPage() {
               placeholder="Search faculty"
             />
           </div>
-          <p className="mt-4 text-sm text-ink/60" aria-live="polite">
+          <p className="mt-4 text-sm text-ink/75" aria-live="polite">
             {filteredFaculty.length} faculty
           </p>
           {filteredFaculty.length === 0 ? (

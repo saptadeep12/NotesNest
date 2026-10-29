@@ -11,7 +11,7 @@ export function FacultyCard({ faculty, expanded, onToggle }: FacultyCardProps) {
   const panelId = `faculty-details-${faculty.id}`;
 
   return (
-    <li className="overflow-hidden rounded-xl border border-ink/10 bg-white">
+    <li className="overflow-hidden rounded-xl border border-ink/20 bg-white">
       {hasDetails ? (
         <button
           type="button"
@@ -23,7 +23,7 @@ export function FacultyCard({ faculty, expanded, onToggle }: FacultyCardProps) {
           <span className="min-w-0">
             <span className="block font-medium">{faculty.name}</span>
             {faculty.department && (
-              <span className="mt-1 block text-sm text-ink/60">{faculty.department}</span>
+              <span className="mt-1 block text-sm text-ink/75">{faculty.department}</span>
             )}
           </span>
           <svg
@@ -41,7 +41,7 @@ export function FacultyCard({ faculty, expanded, onToggle }: FacultyCardProps) {
         <div className="flex min-h-20 items-center px-5 py-4">
           <div>
             <p className="font-medium">{faculty.name}</p>
-            {faculty.department && <p className="mt-1 text-sm text-ink/60">{faculty.department}</p>}
+            {faculty.department && <p className="mt-1 text-sm text-ink/75">{faculty.department}</p>}
           </div>
         </div>
       )}
@@ -53,7 +53,7 @@ export function FacultyCard({ faculty, expanded, onToggle }: FacultyCardProps) {
           }`}
         >
           <div className="min-h-0 overflow-hidden">
-            <div className="border-t border-ink/10 px-5 pb-5 pt-4 text-sm">
+            <div className="border-t border-ink/20 px-5 pb-5 pt-4 text-sm">
               {faculty.designation && <p>{faculty.designation}</p>}
               {faculty.email && (
                 <p className="mt-2">

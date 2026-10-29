@@ -29,7 +29,7 @@ export default function Home() {
     <section className="py-4 sm:py-10">
       <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand">Your study shelf</p>
       <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-5xl">Find your subjects</h1>
-      <p className="mt-4 max-w-xl text-base leading-7 text-ink/70">
+      <p className="mt-4 max-w-xl text-base leading-7 text-ink/75">
         Previous-year papers and notes, organised by semester and subject.
       </p>
 

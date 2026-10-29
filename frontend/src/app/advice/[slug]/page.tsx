@@ -56,10 +56,10 @@ export default function AdviceArticlePage({ params }: { params: { slug: string }
         <div className="mt-6"><StateMessage title="Loading article…" /></div>
       ) : (
         <>
-          <header className="mt-8 border-b border-ink/10 pb-6">
+          <header className="mt-8 border-b border-ink/20 pb-6">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand">{article.category}</p>
             <h1 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight sm:text-4xl">{article.title}</h1>
-            <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink/60">
+            <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink/75">
               {article.author && <span>By {article.author}</span>}
               <time dateTime={article.updated_at}>
                 Updated {new Date(article.updated_at).toLocaleDateString()}
