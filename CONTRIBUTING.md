@@ -1,16 +1,21 @@
 # Contributing to NotesNest
 
-- Pick any open issue and comment “I’ll take this”. No approval needed.
-- Small fixes and typos: just open a PR.
-- Run it locally with the README steps. If ruff, pytest and the frontend lint pass, you’re good.
-- Keep PRs focused on one thing. Add a screenshot if you changed the UI.
-- No PR template, no formal rules. If something is unclear, ask in the issue.
-- Don’t commit secrets, .env.production, faculty.json or storage/.
+Thanks for helping out! NotesNest is a small, read-only app that helps students find question papers, faculty info and advice. Contributions of all sizes are welcome.
+
+If you find NotesNest useful, please give the repo a ⭐. It helps the project reach more students and grow.
 
 ## Before you start
 
 1. Browse the [open issues](../../issues). Issues labelled `good first issue` are the best place to begin.
 2. Got a new idea? Open an issue first and describe it. Please don't send a large PR out of nowhere.
+
+## Picking an issue
+
+- **One issue at a time.** Finish (or drop) your current issue before taking another, so more people get a chance to contribute.
+- **Comment before you start** (e.g. "I'd like to work on this") so others know it's taken.
+- **If someone has already commented**, don't start working right away. Reply and ask if they are still working on it, or if they're open to you contributing.
+- **No reply?** Give it a few days, then ping a maintainer before picking it up.
+- **Changed your mind?** Leave a quick comment so someone else can take the issue.
 
 ## Project layout
 
