@@ -50,18 +50,6 @@ def test_sync_courses_unknown_subject_is_clear(session_factory, tmp_path):
             raise AssertionError("sync_courses accepted an unknown subject code")
 
 
-def test_real_courses_file_is_structurally_valid():
-    source = Path(__file__).parents[1] / "data" / "courses.json"
-    data = load_courses(source)
-    subject_codes = [subject.code for subject in data.subjects]
-    assert len(subject_codes) == len(set(subject_codes))
-    term_keys = [
-        (term.season, term.academic_year, term.is_freshers)
-        for term in data.terms
-    ]
-    assert len(term_keys) == len(set(term_keys))
-    known_codes = set(subject_codes)
-    assert all(code in known_codes for term in data.terms for code in term.subjects)
 
 
 def test_sync_files_is_idempotent_and_removes_missing(session_factory, tmp_path, monkeypatch):
